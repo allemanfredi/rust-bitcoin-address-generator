@@ -1,0 +1,13 @@
+[package]
+name = "rust-bitcoin-address-generator"
+version = "0.1.0"
+authors = ["allemanfredi <alle.manfredi@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rust-crypto = "0.2.36"
+secp256k1 = "0.15.3"
+rand = "0.6.0"
+rust-base58 = "0.0.4"
+bech32 = "0.7.1"
+hex = "0.3.2"
