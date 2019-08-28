@@ -16,7 +16,8 @@ pub enum Payload {
 }
 
 pub enum Network {
-    Mainnet
+    Mainnet,
+    Testnet
 }
 
 pub struct BitcoinAddress {
@@ -31,6 +32,7 @@ impl fmt::Display for BitcoinAddress {
                 let mut address = Vec::new();
                 let prefix = match self.network {
                     Network::Mainnet => vec![0x00],
+                    Network::Testnet => vec![0x6F]
                 };
                 address.extend(prefix);
                 address.extend(payload);
@@ -42,6 +44,7 @@ impl fmt::Display for BitcoinAddress {
                 let mut address = Vec::new();
                 let prefix = match self.network {
                     Network::Mainnet => vec![0x05],
+                    Network::Testnet => vec![0xC4]
                 };
                 address.extend(prefix);
                 address.extend(payload);
@@ -55,6 +58,7 @@ impl fmt::Display for BitcoinAddress {
             } => {
                 let prefix = match self.network {
                     Network::Mainnet => "bc",
+                    Network::Testnet => "tb"
                 };
                 let mut bech32_writer = bech32::Bech32Writer::new(prefix, f)?;
                 bech32::WriteBase32::write_u5(&mut bech32_writer, v)?;
@@ -66,29 +70,29 @@ impl fmt::Display for BitcoinAddress {
 
 impl BitcoinAddress {
 
-    pub fn p2pkh(public_key :&[u8]) -> BitcoinAddress{
+    pub fn p2pkh(public_key :&[u8], network :Network) -> BitcoinAddress{
         if public_key.len() != 33 {
             panic!("Public key must be 33 bytes(compressed) length");
         }
         let hash = hash160(&public_key);
         BitcoinAddress {
-            network : Network::Mainnet,
+            network : network,
             payload : Payload::PubkeyHash(hash)
         }
     }
 
-    pub fn p2sh(script: &[u8]) -> BitcoinAddress {
+    pub fn p2sh(script: &[u8], network :Network) -> BitcoinAddress {
         if script.len() == 0 {
             panic!("Script must be at least 1 opcode");
         }
         let hash = hash160(&script);
         BitcoinAddress {
-            network : Network::Mainnet,
+            network : network,
             payload : Payload::ScriptHash(hash)
         }
     }
 
-    pub fn p2wpkh(public_key : &[u8]) -> BitcoinAddress {
+    pub fn p2wpkh(public_key : &[u8], network :Network) -> BitcoinAddress {
         if public_key.len() != 33 {
             panic!("Public key must be 33 bytes(compressed) length")
         }
@@ -96,7 +100,7 @@ impl BitcoinAddress {
         script.extend(public_key.to_vec());
         let hscript = hash160(&script);
         BitcoinAddress {
-            network : Network::Mainnet,
+            network : network,
             payload : Payload::WitnessProgram {
                 version: bech32::u5::try_from_u8(0).unwrap(),
                 program : hscript
@@ -104,7 +108,7 @@ impl BitcoinAddress {
         }
     }
 
-    pub fn p2wsh(script: &[u8]) -> BitcoinAddress{
+    pub fn p2wsh(script: &[u8], network :Network) -> BitcoinAddress{
         if script.len() == 0 {
             panic!("Script must be at least 1 opcode");
         }
@@ -112,7 +116,7 @@ impl BitcoinAddress {
         mscript.extend(script.to_vec());
         let hscript = sha256(&script); 
         BitcoinAddress {
-            network : Network::Mainnet,
+            network : network,
             payload : Payload::WitnessProgram {
                 version: bech32::u5::try_from_u8(0).unwrap(),
                 program : hscript

@@ -20,12 +20,10 @@ cd rust-bitcoin-address-generator/target/debug
 
 ## How to use it
 ```
-./rust-bitcoin-address-generator --type p2pkh
+usage: ./rust-bitcoin-address-generator --type <type> --script <script> [--mainnet | --testnet]
 
-./rust-bitcoin-address-generator --type p2wpkh
+where <type> can be [p2pkh,p2wpkh,p2sh,p2wsh] and <script> is an array of op_codes byte
 
-./rust-bitcoin-address-generator --type p2sh --script "op_codes byte separated by comma"
-
-./rust-bitcoin-address-generator --type p2wsh --script "op_codes byte separated by comma"
+ex: ./rust-bitcoin-address-generator --type p2sh --script 00,14 --mainnet
 ```
 

@@ -10,7 +10,6 @@ use rand::rngs::OsRng;
 use std::env;
 use hex::FromHex;
 
-
 mod address;
 
 fn main(){
@@ -23,27 +22,91 @@ fn main(){
     let (_secret_key, public_key) = secp256k1.generate_keypair(&mut rng);
     let serialized_public_key = public_key.serialize();
 
+    print!("Private Key : {}\n", _secret_key);
+    print!("Public Key : {}\n", public_key);
+
     match args.len() {
-        3 => {
-            let cmd = &args[1];
-            let what = &args[2];
-            match &cmd[..] {
+        3 | 4 => {
+            let network = if args.len() > 3 { &args[3] } else { "--mainnet" } ;
+            match &network[..] {
+                "--testnet" => {
+                    exec_args_p2pkh_p2wpkh(&args, address::Network::Testnet, &serialized_public_key);
+                },
+                "--mainnet" => {
+                    exec_args_p2pkh_p2wpkh(&args, address::Network::Mainnet, &serialized_public_key);
+                }
+                _ => {
+                    eprintln!("error: invalid command");
+                    help();
+                }
+            };
+        },
+        5 | 6 => {
+            let script = parse_script(&args[4]);
+            let network = if args.len() > 5 { &args[5] } else { "--mainnet" } ;
+            match &network[..] {
+                "--testnet" => {
+                    exec_args_p2sh_p2wsh(&args, address::Network::Testnet, &script);
+                },
+                "--mainnet" => {
+                    exec_args_p2sh_p2wsh(&args, address::Network::Mainnet, &script);
+                }
+                _ => {
+                    eprintln!("error: invalid command");
+                    help();
+                }
+            };
+        },
+        _ => {
+            // show a help message
+            eprintln!("error: invalid command");
+            help()
+        }
+    }
+}   
+
+fn exec_args_p2pkh_p2wpkh(args: &Vec<String>, network: address::Network, serialized_public_key: &[u8]) {
+    match &args[1][..] {
+        "--type" => {
+            match &args[2][..] {
+                "p2pkh" => {
+                    let _address = address::BitcoinAddress::p2pkh(&serialized_public_key, network);
+                    print!("Address : {}\n", _address);
+                },
+                "p2wpkh" => {
+                    let _address = address::BitcoinAddress::p2wpkh(&serialized_public_key, network);
+                    print!("Address : {}\n", _address);
+                }
+                    _ => {
+                    eprintln!("error: invalid command");
+                    help();
+                },  
+            }
+        }
+        _ => {
+            eprintln!("error: invalid command");
+            help();
+        },
+    }
+}
+
+fn exec_args_p2sh_p2wsh(args: &Vec<String>, network: address::Network, script: &Vec<u8>) {
+    match &args[3][..] {
+        "--script" => {
+            match &args[1][..] {
                 "--type" => {
-                    match &what[..] {
-                        "p2pkh" => {
-                            let address = address::BitcoinAddress::p2pkh(&serialized_public_key);
-                            print!("Private Key : {}\n", _secret_key);
-                            print!("Public Key : {}\n", public_key);
+                    match &args[2][..] {
+                        "p2sh" => {
+                            let address = address::BitcoinAddress::p2sh(&script, network);
                             print!("Address : {}\n", address);
                         },
-                        "p2wpkh" => {
-                            let address = address::BitcoinAddress::p2wpkh(&serialized_public_key);
-                            print!("Private Key : {}\n", _secret_key);
-                            print!("Public Key : {}\n", public_key);
-                            print!("{}\n", address);
+                        "p2wsh" => {
+                            let address = address::BitcoinAddress::p2wsh(&script, network);
+                            print!("Address : {}\n", address);
                         }
-                         _ => {
-                            eprintln!("error: invalid address type");
+                        _ => {
+                            eprintln!("error: invalid command");
+                            help();
                         },  
                     }
                 }
@@ -52,55 +115,15 @@ fn main(){
                     help();
                 },
             }
-        },
-        5 => {
-            let cmd = &args[1];
-            let what = &args[2];
-            let cmds = &args[3];
-            let script = &args[4];
-
-            let pscript = parse_script(String::from(script.to_string()));
-
-            match &cmds[..] {
-                "--script" => {
-                    match &cmd[..] {
-                        "--type" => {
-                            match &what[..] {
-                                "p2sh" => {
-                                    let address = address::BitcoinAddress::p2sh(&pscript);
-                                    print!("Address : {}\n", address);
-                                },
-                                "p2wsh" => {
-                                    let address = address::BitcoinAddress::p2wsh(&pscript);
-                                    print!("Address : {}\n", address);
-                                }
-                                _ => {
-                                    eprintln!("error: invalid address type");
-                                },  
-                            }
-                        }
-                        _ => {
-                            eprintln!("error: invalid command");
-                            help();
-                        },
-                    }
-                }
-                _ => {
-                    eprintln!("error: invalid command");
-                    help();
-                },
-            }
-        },
-        _ => {
-            // show a help message
-            eprintln!("error: invalid command");
-            help()
         }
+        _ => {
+            eprintln!("error: invalid command");
+            help();
+        },
     }
+}
 
-}   
-
-fn parse_script(script :String) -> Vec<u8>{
+fn parse_script(script :&String) -> Vec<u8>{
     let split_script = script.split(",");
     let vec_script: Vec<&str> = split_script.collect();
     let mut res : Vec<u8>= Vec::new(); 
@@ -112,7 +135,9 @@ fn parse_script(script :String) -> Vec<u8>{
 }
 
 fn help(){
-    print!("USAGE:\n --type [p2pkh,p2wpkh] \n --type [p2sh,p2wsh] --script [script bytes] \n ex: --type p2sh --script '00,14...'")
+    print!("usage: ./rust-bitcoin-address-generator --type <type> --script <script> [--mainnet | --testnet]\n");
+    print!("where <type> can be [p2pkh,p2wpkh,p2sh,p2wsh] and <script> is an array of op_codes byte\n");
+    print!("ex: ./rust-bitcoin-address-generator --type p2sh --script 00,14 --mainnet\n");
 }
 
 
